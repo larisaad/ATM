@@ -1,0 +1,79 @@
+TEMA 2 PC
+DANAILA LARISA ANDREEA, 324CC	
+
+SERVER:
+
+Implementare TCP si UDP:
+
+M-am folosit de scheltul de laborator pentru TCP, respectiv UDP.
+Deschid socketii sockfd si udp_sockfd pentru conexiuni tcp si udp, setez adresa serverului
+cu parametii potriviti si cu portul primit ca parametru.
+Leg adresa serverului de socketi in bind, si pornesc cu listen asteptarea de conexiuni pe socketul
+de tcp. Imi initializez multimea file descriptorilor (din care selectez mai apoi) cu 0, adaug 
+socketii, actualizand valoarea maxima a descriptorilor (fdmax).
+Adaug si 0 in read_fds pentru citirea lui quit.
+ 
+Folosesc ca variabile globale un vector ce contine userii cititi din fisier, N-dimensiunea lui, un 
+user empty, care are toate valorile goale, si un count pentru a implementa blocarea unui card.
+Tin un vectori de useri curenti pentru fiecare terminal.
+Vectorul are marimea 1, initial, si este realocat la aparitia unui nou client.
+
+In main, in while (1):
+	select - multiplexeaza conexiunile mai multor clienti
+	daca exista o conexiune pe vreun socket din multimea mea, incep cu cazul lui sockfd
+	la sockfd, se cere conexiunea unui alt client la socketul meu tcp => fac accept, adaug 
+	clientul in multimea mea si ii atribui un user curent, care, initial, e empty;
+	- udp_sockfd, primesc ceva pe udp => recvfrom, prelucrez mesajul de tip unlock => trimit
+	rezultatul la client
+	- conexiune la 0, citire de la tastatura a lui quit
+	- altfel, primesc pe socketul i un mesaj => recv(), prelucrez mesajul => trimit rezultatul
+
+
+CLIENT:
+Deschid sochetii, setez adresa serverului; nu e nevoie de bind aici. Setez multimea de file 
+descriptori.
+In main, in while(1):
+	multiplexez conexiunile cu select
+	daca primesc pe sockfd, e mesaj de la server => recv, trec mesajul in fisierul de log
+	daca primesc pe 0 e citire, prelucrez comenzile si le trimit serverului => send
+	in caz ca citesc unlock, trimit pe socketul udp serverului comanda
+
+Implementare comenzi:
+Nu am verificat ca aceste comenzi sa aiba numarul corect de parametrii, dupa ce am citit pe forum,
+am inteles ca nu e necesar acest lucru.
+
+LOGIN: Cand citesc un login, imi actualizez 2 valori in client, lastlog -> folosit pt unlock, si
+daca login-ul este unul valid, (verific rezultatul de la server) setez curr_log_state.
+curr_log_state il folosesc pentru a returna in client eroarea -1, cand se aplica comenzi diferite 
+de login, si niciun client nu este logat. De asemenea, un login peste un curr_log_state = true,
+rezuta in eroarea -2 in client.
+
+In server, prelucrez comanda. Daca e una valida actualizez userul curent, care acum nu mai este
+unul empty, ci egal cu clientul din "baza mea de date"(vectorul users) care are numarul cardului
+egal cu cel dupa care s-a facut loginul.
+
+Mentiune: Un login cu un pin gresit, in programul meu, produce mai intai o eroare de "Sesiune deja 
+pornita" (in cazul in care este) si nu una de pin gresit.
+
+LOGOUT: in client se elibereaza curr_log_state-ul, iar in server, se elibereaza userul curent al
+procesului, care devine un empty user.
+
+LISTSOLD: se face dupa login in client, altfel apare eroarea -1, in server se afiseaza soldul
+userului curent corespunzator clientului.
+
+GETMONEY: in server, se verifica dac suma este multiplu de 10, sau daca exista fonduri, obtinand
+erorile corespunzatoarem, iar daca nu sunt erori, se actualizeaza soldul clientului.
+
+PUTMONEY: se actualizeaza soldul userului curent al terminalului.
+
+UNLOCK: variabila lastlog din main retine ultimul nr de card pe care s-a incercat login;
+se face unlock pe aceasta variabila.
+in server se verifica id-ul, iar daca este unul valid, si clientul este intr-adevar blocat, se cere
+parola secreta.
+
+QUIT: -in client, trimit serverului un mesaj ca vreau ca acest client sa se opreasca, iar cand primesc
+	confirmarea opresc clientul.
+      -in server, le trimit tuturor clientilor mesajul quit, la primirea acestora ei se inchid.
+      -apoi inchid socketii, iar la final socketii tcp si udp si inchid serverul.
+
+
